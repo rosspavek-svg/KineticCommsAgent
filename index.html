@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinetic Communications Agent</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3347;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-dim: #1e3a5f;
+      --green: #10b981;
+      --green-dim: #064e3b;
+      --yellow: #f59e0b;
+      --yellow-dim: #451a03;
+      --red: #ef4444;
+      --red-dim: #450a0a;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --radius: 8px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Header */
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 20px; height: 56px; display: flex; align-items: center;
+      justify-content: space-between; flex-shrink: 0;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .logo-title { font-size: 14px; font-weight: 700; }
+    .logo-sub { font-size: 11px; color: var(--text-muted); }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .status-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot-green { background: var(--green); animation: pulse 2s infinite; }
+    .dot-red { background: var(--red); }
+    .dot-yellow { background: var(--yellow); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    .scan-btn {
+      padding: 6px 14px; background: var(--accent); border: none; border-radius: 6px;
+      color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .scan-btn:hover { background: var(--accent-hover); }
+    .scan-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Layout */
+    .app-body { display: flex; flex: 1; overflow: hidden; }
+
+    /* Queue panel */
+    .queue-panel {
+      width: 320px; flex-shrink: 0; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .queue-header {
+      padding: 14px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .queue-header h2 { font-size: 13px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .07em; }
+    .queue-summary { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    .queue-filters {
+      display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap; flex-shrink: 0;
+    }
+    .filter-btn {
+      padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .filter-btn:hover { border-color: var(--text-muted); color: var(--text); }
+    .filter-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+    .queue-list { flex: 1; overflow-y: auto; }
+
+    .queue-section-label {
+      padding: 10px 14px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--text-muted); position: sticky; top: 0;
+      background: var(--bg); z-index: 1;
+    }
+
+    .queue-item {
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background .1s; border-left: 3px solid transparent;
+    }
+    .queue-item:hover { background: var(--surface); }
+    .queue-item.active { background: var(--surface); border-left-color: var(--accent); }
+    .queue-item-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .queue-item-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .queue-item-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+    }
+    .badge-red { background: var(--red-dim); color: var(--red); }
+    .badge-yellow { background: var(--yellow-dim); color: var(--yellow); }
+    .badge-blue { background: var(--accent-dim); color: var(--accent); }
+    .badge-green { background: var(--green-dim); color: var(--green); }
+
+    .queue-empty {
+      padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px;
+    }
+
+    /* Main panel */
+    .main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Welcome */
+    .welcome {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; gap: 16px; color: var(--text-muted);
+      padding: 40px;
+    }
+    .welcome-icon { font-size: 56px; opacity: .4; }
+    .welcome-title { font-size: 18px; font-weight: 700; color: var(--text-dim); }
+    .welcome-sub { font-size: 14px; max-width: 380px; line-height: 1.7; }
+
+    /* Work area */
+    .work-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Record bar */
+    .record-bar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .record-bar-left { display: flex; flex-direction: column; gap: 3px; }
+    .record-bar-title { font-size: 15px; font-weight: 700; }
+    .record-bar-sub { font-size: 12px; color: var(--text-muted); }
+    .comm-type-selector { display: flex; gap: 6px; flex-wrap: wrap; }
+    .comm-type-btn {
+      padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .15s;
+    }
+    .comm-type-btn:hover { border-color: var(--text-muted); color: var(--text); }
+    .comm-type-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+
+    /* Content split */
+    .content-split { flex: 1; display: flex; overflow: hidden; }
+
+    /* ERP data pane */
+    .erp-pane {
+      width: 300px; flex-shrink: 0; border-right: 1px solid var(--border);
+      overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .data-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .data-card-header {
+      background: var(--surface2); padding: 8px 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--text-muted); border-bottom: 1px solid var(--border);
+    }
+    .data-card-body { padding: 10px 12px; }
+    .kv { display: grid; grid-template-columns: 110px 1fr; gap: 5px 10px; font-size: 12px; }
+    .kv-k { color: var(--text-muted); font-weight: 500; }
+    .kv-v { color: var(--text); }
+    .kv-v.warn { color: var(--yellow); font-weight: 600; }
+    .kv-v.alert { color: var(--red); font-weight: 600; }
+    .kv-v.ok { color: var(--green); }
+    .mini-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+    .mini-table th { color: var(--text-muted); font-weight: 600; text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+    .mini-table td { padding: 4px 4px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+    .mini-table tr:last-child td { border-bottom: none; }
+
+    /* Comm pane */
+    .comm-pane { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+    .generating {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; color: var(--text-muted);
+    }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .comm-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .comm-section-header {
+      background: var(--surface2); padding: 9px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .comm-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .comm-section-body { padding: 14px; font-size: 13px; line-height: 1.7; color: var(--text-dim); }
+
+    .issues-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .issue-item { display: flex; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: 12px; line-height: 1.5; }
+    .issue-high { background: var(--red-dim); color: #fca5a5; border-left: 3px solid var(--red); }
+    .issue-med  { background: var(--yellow-dim); color: #fcd34d; border-left: 3px solid var(--yellow); }
+    .issue-low  { background: var(--green-dim); color: #6ee7b7; border-left: 3px solid var(--green); }
+
+    .draft-area {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px; font-size: 13px; line-height: 1.8; color: var(--text);
+      white-space: pre-wrap; font-family: var(--font);
+      min-height: 160px; outline: none;
+    }
+    .draft-area:focus { border-color: var(--accent); }
+    .draft-area[contenteditable="true"] { border-color: var(--accent); }
+
+    .next-actions-list { display: flex; flex-direction: column; gap: 7px; }
+    .next-action-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; background: var(--surface2); border-radius: 6px; font-size: 12px; color: var(--text-dim); }
+    .na-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+
+    /* Refine bar */
+    .refine-bar {
+      border-top: 1px solid var(--border); padding: 12px 16px;
+      display: flex; gap: 8px; flex-shrink: 0; background: var(--surface);
+    }
+    .refine-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 12px;
+    }
+    .refine-input:focus { outline: none; border-color: var(--accent); }
+    .refine-input::placeholder { color: var(--text-muted); }
+    .refine-btn {
+      padding: 8px 16px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-dim); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .refine-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .refine-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .copy-btn {
+      padding: 8px 14px; background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-muted); font-size: 13px;
+      cursor: pointer; transition: all .15s;
+    }
+    .copy-btn:hover { border-color: var(--text-muted); color: var(--text); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚙</div>
+    <div>
+      <div class="logo-title">Kinetic Communications Agent</div>
+      <div class="logo-sub">Epicor Kinetic ERP · Communications Module</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill" id="kinetic-status">
+      <div class="status-dot dot-yellow"></div>
+      <span id="kinetic-status-text">Connecting...</span>
+    </div>
+    <button class="scan-btn" id="scan-btn" onclick="runScan()">
+      <span id="scan-icon">⟳</span> Scan ERP
+    </button>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- Queue -->
+  <div class="queue-panel">
+    <div class="queue-header">
+      <h2>Attention Queue</h2>
+      <div class="queue-summary" id="queue-summary">Run a scan to surface records needing communications.</div>
+    </div>
+    <div class="queue-filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('overdue_order', this)">Orders</button>
+      <button class="filter-btn" onclick="setFilter('job', this)">Jobs</button>
+      <button class="filter-btn" onclick="setFilter('po', this)">POs</button>
+    </div>
+    <div class="queue-list" id="queue-list">
+      <div class="queue-empty">Click <strong>Scan ERP</strong> to load records.</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-panel" id="main-panel">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">📡</div>
+      <div class="welcome-title">Ready to Scan</div>
+      <div class="welcome-sub">
+        Click <strong>Scan ERP</strong> to pull live records from Kinetic that need attention —
+        overdue orders, at-risk jobs, late POs, and more.<br><br>
+        Select a record to generate a draft communication.
+      </div>
+    </div>
+    <div class="work-area" id="work-area" style="display:none;">
+      <div class="record-bar">
+        <div class="record-bar-left">
+          <div class="record-bar-title" id="record-bar-title">—</div>
+          <div class="record-bar-sub" id="record-bar-sub">—</div>
+        </div>
+        <div class="comm-type-selector" id="comm-type-selector"></div>
+      </div>
+      <div class="content-split">
+        <div class="erp-pane" id="erp-pane">
+          <!-- ERP data cards rendered here -->
+        </div>
+        <div class="comm-pane" id="comm-pane">
+          <div class="generating" id="comm-loading" style="display:none;">
+            <div class="spinner"></div>
+            <div style="font-size:13px;">Generating draft communication...</div>
+          </div>
+          <!-- Comm output rendered here -->
+        </div>
+      </div>
+      <div class="refine-bar">
+        <input class="refine-input" id="refine-input" type="text"
+               placeholder="Refine the draft — e.g. 'make it more urgent', 'add an apology', 'shorten it'..."
+               onkeydown="if(event.key==='Enter') refineDraft()" />
+        <button class="refine-btn" id="refine-btn" onclick="refineDraft()">Refine ↵</button>
+        <button class="copy-btn" onclick="copyDraft()">⎘ Copy</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = ''; // same origin — backend serves this file
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allRecords = [];
+let activeFilter = 'all';
+let activeRecord = null;
+let activeCommType = null;
+let currentDraft = '';
+
+// ── Health check ──────────────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API}/api/health`);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const dot = document.querySelector('#kinetic-status .status-dot');
+    const txt = document.getElementById('kinetic-status-text');
+    if (d.kinetic_url && d.kinetic_url !== 'NOT SET' && d.anthropic_key_set) {
+      dot.className = 'status-dot dot-green';
+      txt.textContent = 'Connected';
+    } else {
+      dot.className = 'status-dot dot-yellow';
+      txt.textContent = 'Config needed';
+    }
+  } catch {
+    const dot = document.querySelector('#kinetic-status .status-dot');
+    dot.className = 'status-dot dot-red';
+    document.getElementById('kinetic-status-text').textContent = 'Backend offline';
+  }
+}
+
+// ── Scan ──────────────────────────────────────────────────────────────────────
+async function runScan() {
+  const btn = document.getElementById('scan-btn');
+  const icon = document.getElementById('scan-icon');
+  btn.disabled = true;
+  icon.textContent = '⟳';
+  icon.style.animation = 'spin .7s linear infinite';
+  document.getElementById('queue-summary').textContent = 'Scanning Kinetic ERP...';
+  document.getElementById('queue-list').innerHTML =
+    '<div class="queue-empty">Pulling records from Kinetic...</div>';
+
+  try {
+    const r = await fetch(`${API}/api/scan`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    processResults(data);
+  } catch (e) {
+    document.getElementById('queue-summary').textContent = 'Scan failed — is the backend running?';
+    document.getElementById('queue-list').innerHTML =
+      `<div class="queue-empty" style="color:var(--red)">⚠ ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+function processResults(data) {
+  const r = data.results || {};
+  allRecords = [
+    ...(r.overdue_orders   || []),
+    ...(r.overdue_jobs     || []),
+    ...(r.atrisk_jobs      || []),
+    ...(r.overdue_po_lines || []),
+  ];
+
+  const total = allRecords.length;
+  const errors = data.errors || {};
+  const errKeys = Object.keys(errors);
+  let summary = `${total} record${total !== 1 ? 's' : ''} need attention`;
+  if (errKeys.length) summary += ` (${errKeys.length} scan error${errKeys.length > 1 ? 's' : ''})`;
+  document.getElementById('queue-summary').textContent = summary;
+
+  renderQueue();
+}
+
+// ── Queue rendering ───────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderQueue();
+}
+
+function renderQueue() {
+  const list = document.getElementById('queue-list');
+  let filtered = allRecords;
+  if (activeFilter !== 'all') {
+    filtered = allRecords.filter(r => {
+      if (activeFilter === 'job') return r._type === 'overdue_job' || r._type === 'atrisk_job';
+      if (activeFilter === 'po')  return r._type === 'overdue_po_line' || r._type === 'open_po';
+      return r._type === activeFilter;
+    });
+  }
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="queue-empty">No records match this filter.</div>';
+    return;
+  }
+
+  const groups = {
+    overdue_order:   { label: 'Overdue Orders',       items: [] },
+    overdue_job:     { label: 'Overdue Jobs',          items: [] },
+    atrisk_job:      { label: 'At-Risk Jobs',          items: [] },
+    overdue_po_line: { label: 'Late PO Releases',      items: [] },
+    open_po:         { label: 'Open POs',              items: [] },
+  };
+  filtered.forEach(r => {
+    if (groups[r._type]) groups[r._type].items.push(r);
+  });
+
+  let html = '';
+  for (const [type, g] of Object.entries(groups)) {
+    if (!g.items.length) continue;
+    html += `<div class="queue-section-label">${g.label} (${g.items.length})</div>`;
+    g.items.forEach(r => {
+      html += buildQueueItem(r);
+    });
+  }
+  list.innerHTML = html;
+}
+
+function buildQueueItem(r) {
+  const id = recordId(r);
+  let title, sub, badge, badgeClass;
+
+  if (r._type === 'overdue_order') {
+    title = `SO-${r.OrderNum}`;
+    const days = daysSince(r.RequestDate);
+    sub = `Cust #${r.CustNum} · $${Number(r.OrderAmt||0).toLocaleString()}`;
+    badge = `${days}d overdue`; badgeClass = 'badge-red';
+  } else if (r._type === 'overdue_job') {
+    title = `Job ${r.JobNum}`;
+    sub = r.PartNum;
+    const days = daysSince(r.DueDate);
+    badge = `${days}d overdue`; badgeClass = 'badge-red';
+  } else if (r._type === 'atrisk_job') {
+    title = `Job ${r.JobNum}`;
+    const pct = r.ProdQty > 0 ? Math.round((r.QtyCompleted / r.ProdQty) * 100) : 0;
+    sub = `${r.PartNum} · ${pct}% complete`;
+    const days = daysUntil(r.DueDate);
+    badge = `due in ${days}d`; badgeClass = days <= 7 ? 'badge-yellow' : 'badge-blue';
+  } else if (r._type === 'overdue_po_line') {
+    title = `PO-${r.PONum} Line ${r.POLine}`;
+    sub = r.PartNum || 'Part N/A';
+    const days = daysSince(r.DueDate);
+    badge = `${days}d late`; badgeClass = 'badge-red';
+  } else {
+    title = `PO-${r.PONum}`;
+    sub = r.VendorName || `Vendor #${r.VendorNum}`;
+    badge = 'Open'; badgeClass = 'badge-blue';
+  }
+
+  const activeClass = activeRecord && recordId(activeRecord) === id ? ' active' : '';
+
+  return `<div class="queue-item${activeClass}" onclick="selectRecord(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+    <div class="queue-item-title">${esc(title)}</div>
+    <div class="queue-item-sub">${esc(sub)}</div>
+    <div class="queue-item-meta">
+      <span class="badge ${badgeClass}">${badge}</span>
+    </div>
+  </div>`;
+}
+
+// ── Select record ─────────────────────────────────────────────────────────────
+async function selectRecord(record) {
+  activeRecord = record;
+  currentDraft = '';
+
+  // update active state in queue
+  renderQueue();
+
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('work-area').style.display = 'flex';
+  document.getElementById('comm-pane').innerHTML = '';
+  document.getElementById('refine-input').value = '';
+
+  // set title
+  document.getElementById('record-bar-title').textContent = recordTitle(record);
+  document.getElementById('record-bar-sub').textContent = recordSubtitle(record);
+
+  // comm type options
+  const types = commTypesFor(record._type);
+  const sel = document.getElementById('comm-type-selector');
+  sel.innerHTML = types.map((t, i) =>
+    `<button class="comm-type-btn ${i===0?'active':''}" onclick="setCommType('${t.value}', this)">${t.label}</button>`
+  ).join('');
+  activeCommType = types[0].value;
+
+  // load detail + auto-generate
+  await loadRecordAndGenerate(record, activeCommType);
+}
+
+async function setCommType(type, btn) {
+  if (type === activeCommType) return;
+  activeCommType = type;
+  document.querySelectorAll('.comm-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  await loadRecordAndGenerate(activeRecord, activeCommType);
+}
+
+async function loadRecordAndGenerate(record, commType) {
+  // show loading in ERP pane
+  document.getElementById('erp-pane').innerHTML =
+    '<div style="padding:20px;color:var(--text-muted);font-size:12px;">Loading ERP data...</div>';
+  showCommLoading(true);
+
+  try {
+    // fetch full detail
+    const detail = await fetchDetail(record);
+    renderErpPane(record, detail);
+
+    // generate communication
+    const payload = {
+      record_type: record._type,
+      comm_type: commType,
+      data: { ...record, ...detail },
+    };
+    const r = await fetch(`${API}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`Generate failed: HTTP ${r.status}`);
+    const result = await r.json();
+    currentDraft = result.draft || '';
+    renderCommOutput(result);
+  } catch (e) {
+    document.getElementById('comm-pane').innerHTML =
+      `<div style="padding:20px;color:var(--red);font-size:13px;">⚠ ${e.message}</div>`;
+  } finally {
+    showCommLoading(false);
+  }
+}
+
+async function fetchDetail(record) {
+  try {
+    if (record._type === 'overdue_order') {
+      const r = await fetch(`${API}/api/record/order/${record.OrderNum}`);
+      return r.ok ? await r.json() : {};
+    } else if (record._type === 'overdue_job' || record._type === 'atrisk_job') {
+      const r = await fetch(`${API}/api/record/job/${encodeURIComponent(record.JobNum)}`);
+      return r.ok ? await r.json() : {};
+    } else if (record._type === 'overdue_po_line') {
+      const r = await fetch(`${API}/api/record/po/${record.PONum}`);
+      return r.ok ? await r.json() : {};
+    }
+  } catch {}
+  return {};
+}
+
+// ── ERP pane ──────────────────────────────────────────────────────────────────
+function renderErpPane(record, detail) {
+  const pane = document.getElementById('erp-pane');
+  let html = '';
+
+  if (record._type === 'overdue_order') {
+    const h = detail.header || record;
+    const lines = detail.lines || [];
+    const contacts = detail.contacts || [];
+    const primary = contacts.find(c => c.PrimaryContact) || contacts[0];
+    const days = daysSince(h.RequestDate);
+
+    html += dataCard('Order Header', `
+      <div class="kv">
+        <span class="kv-k">Order #</span><span class="kv-v">SO-${h.OrderNum}</span>
+        <span class="kv-k">Customer #</span><span class="kv-v">${h.CustNum}</span>
+        <span class="kv-k">Order Date</span><span class="kv-v">${fmtDate(h.OrderDate)}</span>
+        <span class="kv-k">Req. Ship Date</span><span class="kv-v alert">${fmtDate(h.RequestDate)}</span>
+        <span class="kv-k">Days Overdue</span><span class="kv-v alert">${days} days</span>
+        <span class="kv-k">Order Value</span><span class="kv-v">$${Number(h.OrderAmt||0).toLocaleString()}</span>
+      </div>`);
+
+    if (primary) {
+      html += dataCard('Customer Contact', `
+        <div class="kv">
+          <span class="kv-k">Name</span><span class="kv-v">${esc(primary.Name||'—')}</span>
+          <span class="kv-k">Email</span><span class="kv-v">${esc(primary.EmailAddress||'—')}</span>
+          <span class="kv-k">Phone</span><span class="kv-v">${esc(primary.PhoneNum||'—')}</span>
+        </div>`);
+    }
+
+    if (lines.length) {
+      const rows = lines.map(l =>
+        `<tr><td>${l.OrderLine}</td><td>${esc(l.PartNum)}</td><td>${esc(l.LineDesc||'')}</td><td>${l.OrderQty}</td></tr>`
+      ).join('');
+      html += dataCard('Open Lines', `
+        <table class="mini-table">
+          <thead><tr><th>Line</th><th>Part</th><th>Desc</th><th>Qty</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`);
+    }
+
+  } else if (record._type === 'overdue_job' || record._type === 'atrisk_job') {
+    const j = detail.job || record;
+    const mtls = detail.materials || [];
+    const shorts = mtls.filter(m => m.ShortageExists);
+    const pct = j.ProdQty > 0 ? Math.round((j.QtyCompleted / j.ProdQty) * 100) : 0;
+    const overdue = record._type === 'overdue_job';
+
+    html += dataCard('Job Header', `
+      <div class="kv">
+        <span class="kv-k">Job #</span><span class="kv-v">${esc(j.JobNum)}</span>
+        <span class="kv-k">Part #</span><span class="kv-v">${esc(j.PartNum)}</span>
+        <span class="kv-k">Start Date</span><span class="kv-v">${fmtDate(j.StartDate)}</span>
+        <span class="kv-k">Due Date</span><span class="kv-v ${overdue?'alert':'warn'}">${fmtDate(j.DueDate)}</span>
+        <span class="kv-k">Prod Qty</span><span class="kv-v">${j.ProdQty}</span>
+        <span class="kv-k">Qty Complete</span><span class="kv-v">${j.QtyCompleted} (${pct}%)</span>
+        <span class="kv-k">Released</span><span class="kv-v ${j.JobReleased?'ok':'warn'}">${j.JobReleased?'Yes':'No'}</span>
+      </div>`);
+
+    if (shorts.length) {
+      const rows = shorts.map(m =>
+        `<tr><td>${esc(m.PartNum)}</td><td>${esc(m.Description||'')}</td><td>${m.RequiredQty}</td><td>${m.IssuedQty}</td></tr>`
+      ).join('');
+      html += dataCard('⚠ Material Shortages', `
+        <table class="mini-table">
+          <thead><tr><th>Part</th><th>Desc</th><th>Req</th><th>Issued</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`);
+    }
+
+  } else if (record._type === 'overdue_po_line') {
+    const h = detail.header || {};
+    const rels = detail.releases || [];
+    const days = daysSince(record.DueDate);
+
+    html += dataCard('PO Release', `
+      <div class="kv">
+        <span class="kv-k">PO #</span><span class="kv-v">${record.PONum}</span>
+        <span class="kv-k">Line</span><span class="kv-v">${record.POLine}</span>
+        <span class="kv-k">Part #</span><span class="kv-v">${esc(record.PartNum||'—')}</span>
+        <span class="kv-k">Vendor #</span><span class="kv-v">${record.VendorNum}</span>
+        <span class="kv-k">Due Date</span><span class="kv-v alert">${fmtDate(record.DueDate)}</span>
+        <span class="kv-k">Days Late</span><span class="kv-v alert">${days} days</span>
+        <span class="kv-k">Qty Ordered</span><span class="kv-v">${record.RelQty}</span>
+        <span class="kv-k">Qty Received</span><span class="kv-v">${record.ReceivedQty||0}</span>
+      </div>`);
+  }
+
+  pane.innerHTML = html || '<div style="padding:16px;color:var(--text-muted);font-size:12px;">No additional detail available.</div>';
+}
+
+function dataCard(title, bodyHtml) {
+  return `<div class="data-card">
+    <div class="data-card-header">${title}</div>
+    <div class="data-card-body">${bodyHtml}</div>
+  </div>`;
+}
+
+// ── Comm output ───────────────────────────────────────────────────────────────
+function renderCommOutput(result) {
+  const pane = document.getElementById('comm-pane');
+  let html = '';
+
+  // Summary
+  if (result.summary) {
+    html += `<div class="comm-section">
+      <div class="comm-section-header">
+        <div class="comm-section-title">📊 ERP Context Summary</div>
+        <span class="badge badge-blue">FACTS</span>
+      </div>
+      <div class="comm-section-body">${esc(result.summary).replace(/\n/g,'<br>')}</div>
+    </div>`;
+  }
+
+  // Issues
+  if (result.issues) {
+    const bullets = result.issues.split('\n').map(l => l.replace(/^[•\-\*]\s*/,'').trim()).filter(Boolean);
+    const items = bullets.map(b => {
+      const cls = /risk|delay|miss|critical|stop|fail|shortage|overdue|late/i.test(b) ? 'issue-high'
+                : /warn|may|possible|potential/i.test(b) ? 'issue-med' : 'issue-low';
+      return `<li class="issue-item ${cls}">⚑ ${esc(b)}</li>`;
+    }).join('');
+    html += `<div class="comm-section">
+      <div class="comm-section-header">
+        <div class="comm-section-title">⚠ Key Issues / Risks</div>
+        <span class="badge badge-yellow">ASSESSMENT</span>
+      </div>
+      <div class="comm-section-body"><ul class="issues-list">${items}</ul></div>
+    </div>`;
+  }
+
+  // Draft
+  if (result.draft) {
+    html += `<div class="comm-section">
+      <div class="comm-section-header">
+        <div class="comm-section-title">✉ Draft Communication</div>
+        <span class="badge badge-yellow">PENDING APPROVAL · NOT SENT</span>
+      </div>
+      <div class="comm-section-body">
+        <div class="draft-area" id="draft-area" contenteditable="true">${esc(result.draft)}</div>
+      </div>
+    </div>`;
+  }
+
+  // Next Actions
+  if (result.next_actions) {
+    const actions = result.next_actions.split('\n').map(l => l.replace(/^[•\-\*\d.]\s*/,'').trim()).filter(Boolean);
+    const items = actions.map((a, i) =>
+      `<div class="next-action-item"><div class="na-num">${i+1}</div>${esc(a)}</div>`
+    ).join('');
+    html += `<div class="comm-section">
+      <div class="comm-section-header">
+        <div class="comm-section-title">▶ Suggested Next Actions</div>
+        <span class="badge badge-green">ACTIONS</span>
+      </div>
+      <div class="comm-section-body"><div class="next-actions-list">${items}</div></div>
+    </div>`;
+  }
+
+  pane.innerHTML = html;
+  // store draft text
+  const draftEl = document.getElementById('draft-area');
+  if (draftEl) currentDraft = draftEl.innerText;
+}
+
+function showCommLoading(show) {
+  if (show) {
+    document.getElementById('comm-pane').innerHTML =
+      '<div class="generating"><div class="spinner"></div><div style="font-size:13px;">Generating draft communication...</div></div>';
+  }
+}
+
+// ── Refine ────────────────────────────────────────────────────────────────────
+async function refineDraft() {
+  const input = document.getElementById('refine-input');
+  const instruction = input.value.trim();
+  if (!instruction) return;
+
+  const draftEl = document.getElementById('draft-area');
+  const draftText = draftEl ? draftEl.innerText : currentDraft;
+
+  const btn = document.getElementById('refine-btn');
+  btn.disabled = true;
+  btn.textContent = 'Refining...';
+
+  try {
+    const r = await fetch(`${API}/api/refine`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ original_draft: draftText, refinement: instruction }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const result = await r.json();
+    currentDraft = result.draft || '';
+    renderCommOutput(result);
+    input.value = '';
+  } catch (e) {
+    alert('Refinement failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Refine ↵';
+  }
+}
+
+function copyDraft() {
+  const el = document.getElementById('draft-area');
+  const text = el ? el.innerText : currentDraft;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function commTypesFor(recordType) {
+  const map = {
+    overdue_order:   [
+      { value: 'order_status_update',    label: 'Order Status Update' },
+      { value: 'delay_notification',     label: 'Delay Notification' },
+      { value: 'expedite_acknowledgement', label: 'Expedite Ack' },
+    ],
+    overdue_job:     [
+      { value: 'internal_delay_alert',   label: 'Internal Delay Alert' },
+      { value: 'customer_delay_notification', label: 'Customer Notification' },
+    ],
+    atrisk_job:      [
+      { value: 'internal_status_update', label: 'Internal Status Update' },
+      { value: 'proactive_customer_update', label: 'Proactive Customer Update' },
+    ],
+    overdue_po_line: [
+      { value: 'late_material_followup', label: 'Late Material Follow-Up' },
+      { value: 'supplier_expedite',      label: 'Expedite Request' },
+    ],
+    open_po:         [
+      { value: 'po_confirmation',        label: 'PO Confirmation' },
+    ],
+  };
+  return map[recordType] || [{ value: 'general_update', label: 'General Update' }];
+}
+
+function recordId(r) {
+  if (r._type === 'overdue_order') return `order-${r.OrderNum}`;
+  if (r._type === 'overdue_job' || r._type === 'atrisk_job') return `job-${r.JobNum}`;
+  if (r._type === 'overdue_po_line') return `porel-${r.PONum}-${r.POLine}-${r.PORelNum}`;
+  return `po-${r.PONum}`;
+}
+
+function recordTitle(r) {
+  if (r._type === 'overdue_order') return `Sales Order SO-${r.OrderNum}`;
+  if (r._type === 'overdue_job')   return `Overdue Job ${r.JobNum}`;
+  if (r._type === 'atrisk_job')    return `At-Risk Job ${r.JobNum}`;
+  if (r._type === 'overdue_po_line') return `PO ${r.PONum} — Line ${r.POLine}`;
+  return `Purchase Order ${r.PONum}`;
+}
+
+function recordSubtitle(r) {
+  if (r._type === 'overdue_order') {
+    return `Customer #${r.CustNum} · ${daysSince(r.RequestDate)} days overdue · $${Number(r.OrderAmt||0).toLocaleString()}`;
+  }
+  if (r._type === 'overdue_job' || r._type === 'atrisk_job') {
+    const pct = r.ProdQty > 0 ? Math.round((r.QtyCompleted / r.ProdQty) * 100) : 0;
+    return `${r.PartNum} · ${pct}% complete · due ${fmtDate(r.DueDate)}`;
+  }
+  if (r._type === 'overdue_po_line') {
+    return `Part: ${r.PartNum || 'N/A'} · Vendor #${r.VendorNum} · due ${fmtDate(r.DueDate)}`;
+  }
+  return `Vendor #${r.VendorNum}`;
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return '?';
+  const d = new Date(dateStr);
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return '?';
+  const d = new Date(dateStr);
+  return Math.max(0, Math.floor((d.getTime() - Date.now()) / 86400000));
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkHealth();
+</script>
+</body>
+</html>
